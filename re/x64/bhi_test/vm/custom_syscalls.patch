@@ -1,0 +1,101 @@
+diff --git a/Makefile b/Makefile
+index 9f99a61d2..04260c499 100644
+--- a/Makefile
++++ b/Makefile
+@@ -1115,7 +1115,7 @@ export MODORDER := $(extmod_prefix)modules.order
+ export MODULES_NSDEPS := $(extmod_prefix)modules.nsdeps
+ 
+ ifeq ($(KBUILD_EXTMOD),)
+-core-y		+= kernel/ certs/ mm/ fs/ ipc/ security/ crypto/ block/
++core-y		+= kernel/ certs/ mm/ fs/ ipc/ security/ crypto/ block/ bhi/
+ 
+ vmlinux-dirs	:= $(patsubst %/,%,$(filter %/, \
+ 		     $(core-y) $(core-m) $(drivers-y) $(drivers-m) \
+diff --git a/arch/x86/entry/common.c b/arch/x86/entry/common.c
+index 6c2826417..9dc36b2f3 100644
+--- a/arch/x86/entry/common.c
++++ b/arch/x86/entry/common.c
+@@ -44,6 +44,21 @@ static __always_inline bool do_syscall_x64(struct pt_regs *regs, int nr)
+ 	 * numbers for comparisons.
+ 	 */
+ 	unsigned int unr = nr;
++    
++    /* Set to 1 to enlarge transient window. Makes more stable bhi_test */
++    #if 1
++    asm volatile("clflush (%0)\n"::"r"(&sys_call_table[unr]));
++    #endif
++
++    /* Set to 1 to test IBRS or IBPB */
++    #if 0
++    asm volatile ( "mov $0,    %%rdx\n"
++                   "mov $1,    %%rax\n"
++                   "mov $0x48, %%rcx\n"     //IBRS
++                   //"mov $0x49, %%rcx\n"   //IBPB
++                   "wrmsr\n"
++                   ::: "rax","rcx","rdx" );
++    #endif
+ 
+ 	if (likely(unr < NR_syscalls)) {
+ 		unr = array_index_nospec(unr, NR_syscalls);
+diff --git a/arch/x86/entry/syscalls/syscall_64.tbl b/arch/x86/entry/syscalls/syscall_64.tbl
+index f6b57799c..aa98d44f1 100644
+--- a/arch/x86/entry/syscalls/syscall_64.tbl
++++ b/arch/x86/entry/syscalls/syscall_64.tbl
+@@ -369,6 +369,7 @@
+ 445	common	landlock_add_rule	sys_landlock_add_rule
+ 446	common	landlock_restrict_self	sys_landlock_restrict_self
+ 447	common	memfd_secret		sys_memfd_secret
++448 common  bhi_hit         sys_bhi_hit
+ 
+ #
+ # Due to a historical design error, certain syscalls are numbered differently
+diff --git a/bhi/Makefile b/bhi/Makefile
+new file mode 100644
+index 000000000..902b39ec2
+--- /dev/null
++++ b/bhi/Makefile
+@@ -0,0 +1 @@
++obj-y := bhi.o
+diff --git a/bhi/bhi.c b/bhi/bhi.c
+new file mode 100644
+index 000000000..54608811d
+--- /dev/null
++++ b/bhi/bhi.c
+@@ -0,0 +1,8 @@
++#include <linux/kernel.h>
++#include <linux/syscalls.h>
++
++//Syscall to load the specified ptr
++SYSCALL_DEFINE1(bhi_hit, uint64_t *, ptr)
++{
++    return *ptr;
++}
+diff --git a/include/linux/syscalls.h b/include/linux/syscalls.h
+index 69c9a7010..9f7502c30 100644
+--- a/include/linux/syscalls.h
++++ b/include/linux/syscalls.h
+@@ -1051,6 +1051,7 @@ asmlinkage long sys_landlock_add_rule(int ruleset_fd, enum landlock_rule_type ru
+ 		const void __user *rule_attr, __u32 flags);
+ asmlinkage long sys_landlock_restrict_self(int ruleset_fd, __u32 flags);
+ asmlinkage long sys_memfd_secret(unsigned int flags);
++asmlinkage long sys_bhi_hit(void *ptr);
+ 
+ /*
+  * Architecture-specific system calls
+diff --git a/include/uapi/asm-generic/unistd.h b/include/uapi/asm-generic/unistd.h
+index a9d6fcd95..273d3206a 100644
+--- a/include/uapi/asm-generic/unistd.h
++++ b/include/uapi/asm-generic/unistd.h
+@@ -878,8 +878,11 @@ __SYSCALL(__NR_landlock_restrict_self, sys_landlock_restrict_self)
+ __SYSCALL(__NR_memfd_secret, sys_memfd_secret)
+ #endif
+ 
++#define __NR_bhi_hit 448
++__SYSCALL(__NR_bhi_hit, sys_bhi_hit)
++
+ #undef __NR_syscalls
+-#define __NR_syscalls 448
++#define __NR_syscalls 449
+ 
+ /*
+  * 32 bit systems traditionally used different

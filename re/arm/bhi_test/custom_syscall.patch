@@ -1,0 +1,92 @@
+diff --git a/Makefile b/Makefile
+index b1d50b07240e..7c8f176179b2 100644
+--- a/Makefile
++++ b/Makefile
+@@ -1206,7 +1206,7 @@ endif
+ 	$(Q)$(MAKE) $(hdr-inst)=$(hdr-prefix)arch/$(SRCARCH)/include/uapi
+ 
+ ifeq ($(KBUILD_EXTMOD),)
+-core-y		+= kernel/ certs/ mm/ fs/ ipc/ security/ crypto/ block/
++core-y		+= kernel/ certs/ mm/ fs/ ipc/ security/ crypto/ block/ bhi/
+ 
+ vmlinux-dirs	:= $(patsubst %/,%,$(filter %/, \
+ 		     $(core-y) $(core-m) $(drivers-y) $(drivers-m) \
+diff --git a/arch/arm64/kernel/syscall.c b/arch/arm64/kernel/syscall.c
+index 0bfac95fe464..0d1a617cf3af 100644
+--- a/arch/arm64/kernel/syscall.c
++++ b/arch/arm64/kernel/syscall.c
+@@ -44,6 +44,12 @@ static void invoke_syscall(struct pt_regs *regs, unsigned int scno,
+ 
+ 	if (scno < sc_nr) {
+ 		syscall_fn_t syscall_fn;
++#if 1
++        /* Enlarge transient window for bhi_test */
++        asm volatile("dc civac, %0" :: "r"(&syscall_table[scno]));
++        asm volatile("dsb ish");
++        asm volatile("isb");
++#endif
+ 		syscall_fn = syscall_table[array_index_nospec(scno, sc_nr)];
+ 		ret = __invoke_syscall(regs, syscall_fn);
+ 	} else {
+diff --git a/bhi/Makefile b/bhi/Makefile
+new file mode 100644
+index 000000000000..902b39ec2cf8
+--- /dev/null
++++ b/bhi/Makefile
+@@ -0,0 +1 @@
++obj-y := bhi.o
+diff --git a/bhi/bhi.c b/bhi/bhi.c
+new file mode 100644
+index 000000000000..14925205f101
+--- /dev/null
++++ b/bhi/bhi.c
+@@ -0,0 +1,29 @@
++#include <linux/kernel.h>
++#include <linux/syscalls.h>
++#include <asm/memory.h>
++
++#define ARMV8_PMUSERENR_EN_EL0  (1ULL << 0) /*  EL0 access enable */
++#define ARMV8_PMCNTENSET_EL0_ENABLE (1ULL<<31) /* *< Enable Perf count reg */
++
++SYSCALL_DEFINE1(bhi_hit, uint64_t *, ptr) {
++    return *ptr;
++}
++
++SYSCALL_DEFINE0(bhi_enable) {
++    uint64_t val;
++
++    /*  Enable user-mode access to counters. */
++    isb();
++    asm volatile("msr pmuserenr_el0, %0" : : "r"((u64)ARMV8_PMUSERENR_EN_EL0));
++    isb();
++    asm volatile("mrs %0, pmuserenr_el0" : "=r" (val));
++
++    /* Enables the cycle counter register */
++    asm volatile("msr pmcntenset_el0, %0" : : "r" (ARMV8_PMCNTENSET_EL0_ENABLE));
++    
++    /* Print register id_aa64pfr0_el1 to verify if CSV2 is supported */
++    asm volatile("mrs %0, id_aa64pfr0_el1" : "=r" (val));
++    printk("id_aa64pfr0_el1 = 0x%016lx\n", val);
++
++    return val;
++}
+diff --git a/include/uapi/asm-generic/unistd.h b/include/uapi/asm-generic/unistd.h
+index 2056318988f7..d86052aa7e12 100644
+--- a/include/uapi/asm-generic/unistd.h
++++ b/include/uapi/asm-generic/unistd.h
+@@ -860,8 +860,14 @@ __SYSCALL(__NR_faccessat2, sys_faccessat2)
+ #define __NR_process_madvise 440
+ __SYSCALL(__NR_process_madvise, sys_process_madvise)
+ 
++#define __NR_bhi_hit 441
++__SYSCALL(__NR_bhi_hit, sys_bhi_hit)
++#define __NR_bhi_enable 442
++__SYSCALL(__NR_bhi_enable, sys_bhi_enable)
++
++
+ #undef __NR_syscalls
+-#define __NR_syscalls 441
++#define __NR_syscalls 443
+ 
+ /*
+  * 32 bit systems traditionally used different
