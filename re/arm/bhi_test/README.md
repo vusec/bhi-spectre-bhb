@@ -15,7 +15,7 @@ This experiment is meant to be run on a Pixel 6. For this reason ensure to have 
 
 ```
 sudo adb reboot bootloader
-sudo adb fastboot boot boot.img
+sudo fastboot boot boot.img
 ```
 
 ## How to run
@@ -44,7 +44,8 @@ Threshold: 100
 hits 906/1000
 ```
 
-This means that by just controlling the user-space history we managed to redirect speculatively a kernel indirect branch 87% of times to an attack-controlled target.
+This means that by just controlling the user-space history we managed to redirect speculatively a kernel indirect branch
+90% of times to an attack-controlled target.
 
 ## Troubleshooting
 
@@ -78,5 +79,5 @@ Use [Magisk](https://github.com/topjohnwu/Magisk) to root the compiled kernel `o
 
 ```
 sudo adb reboot bootloader
-sudo adb fastboot boot boot.img
+sudo fastboot boot boot.img
 ```

@@ -9,6 +9,10 @@ This experiment will perform BHB brute forcing to achieve a twofold objective:
 
 ## How to run
 
+Before compiling, set the the MACRO `IN_PLACE` to `1` or `0` to respectively run the experiment in-place or out-of-place.
+The `IN_PLACE` macro is present in the [src/main.c](src/main.c) file.
+After this, the experiment can be compiled and run as follow:
+
 ```
 make TARGET=INTEL_10_GEN #or INTEL_11_GEN
 ./run.sh
@@ -16,7 +20,7 @@ make TARGET=INTEL_10_GEN #or INTEL_11_GEN
 
 ## Expected output
 
-With `IN_PLACE == 1`:
+With `IN_PLACE == 1` (in-place):
 
 ```
 [Round        21955]hits:      100/100  round:    21955 ind_branches={0x7f472e1f391c,0x7f472e1f391c}
@@ -25,7 +29,7 @@ With `IN_PLACE == 1`:
 [Round         1589]hits:      100/100  round:     1589 ind_branches={0x7f472e1f391c,0x7f472e1f391c}
 [Round         4921]hits:       99/100  round:     4921 ind_branches={0x7f472e1f391c,0x7f472e1f391c}
 ```
-This means that, on average, after ~10k rounds the brute force managed to find in-place collisions.
+This means that, on average, after ~16k rounds the brute force managed to find in-place collisions.
 
 With `IN_PLACE == 0` (out-of-place): 
 
@@ -36,7 +40,12 @@ With `IN_PLACE == 0` (out-of-place):
 [Round         4892]hits:      100/100  round:     4892 ind_branches={0x7fbb1378d96d,0x7fbb22fc9c2d}
 [Round        10733]hits:      100/100  round:    10733 ind_branches={0x7fbb1378d96d,0x7fbac888e5c1}
 ```
-This means that, on average, after ~10k rounds the brute force managed to find out-of-place collisions.
+This means that, on average, after ~16k rounds the brute force managed to find out-of-place collisions.
+
+For both in-place and out-of-place experiments, the expected average iterations before a collision are:
+
+* 16384 (2^14) for Intel 10th gen
+* 131072 (2^17) for Intel 11th gen
 
 ## Troubleshooting
 

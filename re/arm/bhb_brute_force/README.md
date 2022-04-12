@@ -9,6 +9,11 @@ This experiment will perform BHB brute forcing to achieve a twofold objective:
 
 ## How to run
 
+Before compiling, set the the MACRO `IN_PLACE` to `1` or `0` to respectively run the experiment in-place or out-of-place.
+The `IN_PLACE` macro is present in the [src/main.c](src/main.c) file.
+After this, the experiment can be compiled and run as follow:
+
+
 ```
 make TARGET=PIXEL_6
 adb push main.o /data/local/tmp                                                                                                                                                                                                                               
@@ -31,7 +36,7 @@ rwx mem: 0x732c633000
 [Round 663] hits: 66
 [Round 734] hits: 96
 ```
-This means that, on average, after ~100 rounds the brute force managed to find in-place collisions.
+This means that, on average, after ~400 rounds the brute force managed to find in-place collisions.
 
 With `IN_PLACE == 0` (out-of-place) instead we cannot find any collision
 

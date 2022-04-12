@@ -145,3 +145,10 @@ Very likely this means that the transient window is too small and thus that the 
 
 This step may take a bit of time, especially on the 11th gen. Intel processors. We suggest to wait until ~300'000 tries are made.
 
+#### Assertion `setrlimit(RLIMIT_MEMLOCK, &rlim)==0' failed.
+
+Due to the raw Evict+Reload implementation, this PoC requires 24MB of eBPF maps. On some system this is beyond the allowed limit. To solve this issue ensure your user has the capability `CAP_SYS_RESOURCE`.
+
+
+
+
